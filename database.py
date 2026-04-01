@@ -1,12 +1,13 @@
 import sqlite3
 
-def iniciar_base():
+def crear_tablas():
     conexion = sqlite3.connect('gimnasio.db')
     cursor = conexion.cursor()
 
+    cursor.execute('DROP TABLE IF EXISTS variantes')
     cursor.execute('DROP TABLE IF EXISTS rutina_dias')
-    cursor.execute('DROP TABLE IF EXISTS ejercicios')
     cursor.execute('DROP TABLE IF EXISTS historial')
+    cursor.execute('DROP TABLE IF EXISTS ejercicios')
 
     cursor.execute('''
         CREATE TABLE ejercicios (
@@ -43,9 +44,19 @@ def iniciar_base():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE variantes (
+            ejercicio_id INTEGER,
+            variante_id INTEGER,
+            FOREIGN KEY(ejercicio_id) REFERENCES ejercicios(id),
+            FOREIGN KEY(variante_id) REFERENCES ejercicios(id),
+            PRIMARY KEY (ejercicio_id, variante_id)
+        )
+    ''')
+
     conexion.commit()
     conexion.close()
-    print("Base de datos recreada con la nueva estructura para autoguardado.")
+    print("Estructura de tablas creada perfectamente.")
 
 if __name__ == '__main__':
-    iniciar_base()
+    crear_tablas()

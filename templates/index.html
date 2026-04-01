@@ -4,32 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mi Rutina</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; background-color: #f0f0f0; }
-        .header-controles { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .dias-container { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
-        button { padding: 15px 20px; font-size: 16px; border: none; border-radius: 8px; background-color: #007bff; color: white; cursor: pointer; }
-        .btn-home { background-color: #6c757d; padding: 15px; }
-        .select-semana { padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; }
-        .rutina-container { margin-top: 10px; background: white; padding: 15px; border-radius: 8px; }
-        .ejercicio { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #ccc; }
-        .serie-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
-        .input-box { width: 70px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-size: 16px; }
-        .input-box:disabled { background-color: #e9ecef; color: #495057; }
-        .btn-accion { width: 100%; margin-top: 20px; font-weight: bold; }
-        .fecha-texto { color: #666; font-size: 14px; margin-top: -10px; margin-bottom: 20px; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="header-controles">
         <button class="btn-home" onclick="irInicio()">🏠</button>
-        <select id="selector-semana" class="select-semana" onchange="recargarDia()">
-            <option value="0">Esta semana</option>
-            <option value="1">Hace 1 semana</option>
-            <option value="2">Hace 2 semanas</option>
-            <option value="3">Hace 3 semanas</option>
-            <option value="4">Hace 4 semanas</option>
-        </select>
+        <select id="selector-semana" class="select-semana" onchange="recargarDia()"></select>
     </div>
 
     <div class="dias-container">
@@ -42,106 +22,6 @@
     
     <div id="rutina" class="rutina-container">Selecciona un dia</div>
 
-    <script>
-        let sesionTerminada = false;
-        let diaActual = '';
-        let fechaSesionActual = '';
-
-        function irInicio() { location.reload(); }
-
-        function validarEntero(input) { input.value = input.value.replace(/[^0-9]/g, ''); }
-
-        function validarDecimal(input) {
-            let valor = input.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-            let partes = valor.split('.');
-            if (partes.length > 2) valor = partes[0] + '.' + partes.slice(1).join('');
-            if (partes.length > 1 && partes[1].length > 1) valor = partes[0] + '.' + partes[1].substring(0, 1);
-            input.value = valor;
-        }
-
-        function recargarDia() {
-            if (diaActual) {
-                cargarRutina(diaActual);
-            }
-        }
-
-        function guardarDatos(ejId, nSerie) {
-            const reps = document.getElementById(`reps-${ejId}-${nSerie}`).value;
-            const peso = document.getElementById(`peso-${ejId}-${nSerie}`).value;
-            if (!reps || !peso) return;
-
-            fetch('/guardar_serie', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    fecha: fechaSesionActual,
-                    ejercicio_id: ejId, 
-                    numero_serie: nSerie, 
-                    reps: reps, 
-                    peso: peso
-                })
-            });
-        }
-
-        function toggleSesion() {
-            const inputs = document.querySelectorAll('.input-box');
-            const btn = document.getElementById('btn-sesion');
-            
-            if (!sesionTerminada) {
-                if (confirm('¿Estas seguro de terminar la sesion? Se bloquearan los campos.')) {
-                    inputs.forEach(i => i.disabled = true);
-                    btn.innerText = 'EDITAR SESION';
-                    btn.style.backgroundColor = '#6c757d';
-                    sesionTerminada = true;
-                }
-            } else {
-                if (confirm('¿Quieres habilitar la edicion de los campos?')) {
-                    inputs.forEach(i => i.disabled = false);
-                    btn.innerText = 'TERMINAR SESION';
-                    btn.style.backgroundColor = '#dc3545';
-                    sesionTerminada = false;
-                }
-            }
-        }
-
-        function cargarRutina(dia) {
-            diaActual = dia;
-            const semanasAtras = document.getElementById('selector-semana').value;
-            
-            fetch('/rutina/' + dia + '/' + semanasAtras)
-                .then(response => response.json())
-                .then(res => {
-                    fechaSesionActual = res.fecha_sesion;
-                    
-                    let html = `<h3>Rutina del ${dia}</h3>`;
-                    html += `<div class="fecha-texto">Fecha de entrenamiento: ${fechaSesionActual}</div>`;
-                    
-                    res.rutina.forEach(ej => {
-                        html += `<div class="ejercicio">
-                            <h4>${ej.nombre}</h4>
-                            ${ej.notas ? `<p><small>${ej.notas}</small></p>` : ''}
-                            <p>Objetivo: ${ej.series_objetivo} series de ${ej.reps_rango}</p>`;
-                        
-                        for (let i = 1; i <= ej.series_objetivo; i++) {
-                            const datoPrevio = res.historial.find(h => h.ejercicio_id === ej.ejercicio_id && h.numero_serie === i);
-                            const rVal = datoPrevio ? datoPrevio.repeticiones : '';
-                            const pVal = datoPrevio ? datoPrevio.peso : '';
-
-                            html += `<div class="serie-row">
-                                <span>${i}:</span>
-                                <input type="text" id="reps-${ej.ejercicio_id}-${i}" class="input-box" placeholder="Reps" 
-                                    inputmode="numeric" oninput="validarEntero(this)" onblur="guardarDatos(${ej.ejercicio_id}, ${i})" value="${rVal}">
-                                <input type="text" id="peso-${ej.ejercicio_id}-${i}" class="input-box" placeholder="Kilos" 
-                                    inputmode="decimal" oninput="validarDecimal(this)" onblur="guardarDatos(${ej.ejercicio_id}, ${i})" value="${pVal}">
-                            </div>`;
-                        }
-                        html += `</div>`;
-                    });
-                    html += `<button id="btn-sesion" class="btn-accion" style="background-color: #dc3545;" onclick="toggleSesion()">TERMINAR SESION</button>`;
-                    document.getElementById('rutina').innerHTML = html;
-                    sesionTerminada = false;
-                });
-        }
-    </script>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>
